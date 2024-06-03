@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using UnityEditor.Search;
 
 public class ShieldEnemy : MonoBehaviour
 {
@@ -65,8 +66,10 @@ public class ShieldEnemy : MonoBehaviour
     [SerializeField] public float attackRange;
     [SerializeField] public float damageamount;
     float timer;
+    public GameObject ice;
     bool IsDead = false;
     bool isHit = false;
+    bool isFrozen = false;
     bool attackable = true;
     // bool isShield = false;
     float verticalTolerance = 2f;
@@ -87,8 +90,9 @@ public class ShieldEnemy : MonoBehaviour
         _healthSystem = GetComponent<EnemyHealthSystem>();
         animator = GetComponent<Animator>();
         _healthSystem.OnHit += OnHit;
-       _healthSystem.OnDead += OnDead;
-       _healthSystem.OnShield += OnShield;
+        _healthSystem.OnDead += OnDead;
+        _healthSystem.OnShield += OnShield;
+        _healthSystem.OnFreeze+= OnFreeze;
 
     }
 
@@ -139,7 +143,7 @@ public class ShieldEnemy : MonoBehaviour
             case State.STATE_FROZEN:
                 ChangeAnimationState(cooldown);
                 rb.velocity = Vector2.zero;
-                coolDown(5);
+                FreezeCoolDown(5);
                 break;
             case State.STATE_BACKTOWALL:
                 ChangeAnimationState(startingmove);
@@ -234,7 +238,13 @@ public class ShieldEnemy : MonoBehaviour
     }
     public void setFrozenState()
     {
+        isFrozen = true;
         state = State.STATE_FROZEN;
+    }
+    public void breakFreeze()
+    {
+        isFrozen = false;
+        checkPlayer();
     }
     void hitState()
     {
@@ -253,6 +263,7 @@ public class ShieldEnemy : MonoBehaviour
 
             ChangeAnimationState(hit);
             isHit = false;
+            isFrozen= false;
             attackable = true;
         }
     }
@@ -290,6 +301,17 @@ public class ShieldEnemy : MonoBehaviour
         {
             attackable = true;
             timer = 0;
+            checkPlayer();
+        }
+    }
+    public void FreezeCoolDown(float i)
+    {
+        timer += Time.deltaTime;
+        if (timer >= i)
+        {
+            attackable = true;
+            timer = 0;
+            isFrozen = false;
             checkPlayer();
         }
     }
@@ -343,6 +365,7 @@ public class ShieldEnemy : MonoBehaviour
 
     void OnHit(object sender, float knockdistance)
     {
+
         if (!IsDead)
         {
             state = State.STATE_HIT;
@@ -363,6 +386,14 @@ public class ShieldEnemy : MonoBehaviour
 
         }
 
+    }
+    void OnFreeze(object sender, EventArgs e)
+    {
+        if (isFrozen)
+        {
+            gameObject.GetComponent<EnemyHealthSystem>().onFreeze = true;
+            Instantiate(ice, new Vector3(gameObject.transform.position.x - 3, gameObject.transform.position.y, gameObject.transform.position.z), Quaternion.identity);
+        }
     }
     void OnDead(object sender, EventArgs e)
     {

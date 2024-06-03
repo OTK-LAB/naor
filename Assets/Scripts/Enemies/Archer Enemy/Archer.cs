@@ -41,10 +41,13 @@ public class Archer : MonoBehaviour
     bool attackable = true;
     bool IsDead = false;
     bool isHit = false;
+    bool isFrozen = false;
     public GameObject Arrow;
     public float LaunchForce;
     public GameObject attackPoint;
     float verticalTolerance = 1.5f; //enemy alttayken player üstteyse onu algýlamasýn diye eklendi
+    public GameObject ice;
+
 
     //Move
     bool Moveright = true;
@@ -76,6 +79,7 @@ public class Archer : MonoBehaviour
         animator = GetComponent<Animator>();
         _healthSystem.OnHit += OnHit;
         _healthSystem.OnDead += OnDead;
+        _healthSystem.OnFreeze += OnFreeze;
         firstmoveSpeed = moveSpeed;
         slowSpeed = (firstmoveSpeed / 100) * (100 - slowRate);
 
@@ -118,7 +122,7 @@ public class Archer : MonoBehaviour
             case State.STATE_FROZEN:
                 ChangeAnimationState(cooldown);
                 rb.velocity = Vector2.zero;
-                coolDown(5);
+                FreezeCoolDown(5);
                 break;
             case State.STATE_HIT:
                 hitState();
@@ -158,7 +162,13 @@ public class Archer : MonoBehaviour
     }
     public void setFrozenState()
     {
+        isFrozen= true;
         state = State.STATE_FROZEN;
+    }
+    public void breakFreeze()
+    {
+        isFrozen = false;
+        checkPlayer();
     }
     void checkPlayer()
     {
@@ -191,6 +201,17 @@ public class Archer : MonoBehaviour
         {
             attackable = true;
             timer = 0;
+            checkPlayer();
+        }
+    }
+    public void FreezeCoolDown(float i)
+    {
+        timer += Time.deltaTime;
+        if (timer >= i)
+        {
+            attackable = true;
+            timer = 0;
+            isFrozen = false;
             checkPlayer();
         }
     }
@@ -244,6 +265,7 @@ public class Archer : MonoBehaviour
 
             ChangeAnimationState(hit);
             isHit = false;
+            isFrozen= false;
             attackable = true;
         }
     }
@@ -254,6 +276,14 @@ public class Archer : MonoBehaviour
         {
             state = State.STATE_HIT;
             isHit = true;
+        }
+    }
+    void OnFreeze(object sender, EventArgs e)
+    {
+        if (isFrozen)
+        {
+            gameObject.GetComponent<EnemyHealthSystem>().onFreeze = true;
+            Instantiate(ice, new Vector3(gameObject.transform.position.x - 3, gameObject.transform.position.y, gameObject.transform.position.z), Quaternion.identity);
         }
     }
     void OnDead(object sender, EventArgs e)

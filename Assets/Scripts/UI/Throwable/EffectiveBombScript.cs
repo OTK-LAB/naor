@@ -7,12 +7,11 @@ using UnityEngine;
 
 public class EffectiveBombScript : MonoBehaviour
 {
+    public GameObject Player;
     public float speed;
     public Vector3 LaunchOffset;
     public GameObject effectObj;
-
-    public bool isWind;
-
+    private float timer = 2;
 
     private void Awake()
     {
@@ -41,6 +40,11 @@ public class EffectiveBombScript : MonoBehaviour
 
     void Update()
     {
+        timer -= Time.deltaTime;
+        if (timer <= 0)
+        {
+            Destroy(gameObject);
+        }
     }
 
     private void ignoreLayers()

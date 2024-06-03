@@ -6,18 +6,22 @@ using UnityEngine;
 
 public class DaggerScript : MonoBehaviour
 {
-    public bool Destroyed = false;
     public Item item;
     public float speed;
-    
-    private float daggerDamage;
+    public bool iceDagger;
 
+    public GameObject ice;
+
+    public float deathTime;
+    public float daggerDamage;
+    private bool Destroyed = false;
+
+    public bool isIceBreaked;
 
     private void Awake()
     {
         daggerDamage = item.value;
-
-
+        
         Vector3 directionVector;
         if (GameObject.Find("Player").transform.localScale.x > 0)
         {
@@ -47,19 +51,42 @@ public class DaggerScript : MonoBehaviour
 
     void Update()
     {
+        deathTime -= Time.deltaTime;
+        if (deathTime <= 0)
+        {
+            Destroyed= true;
+        }
         if (Destroyed)
         {
             Destroy(gameObject);
         }
+        
+    
+    }
+
+    public void breakFreeze()
+    {
+        Instantiate(ice);
+        Destroyed = true;
     }
 
     private void OnTriggerEnter2D(Collider2D col)
     {
         if (col.gameObject.layer == LayerMask.NameToLayer("Enemy"))
         {
-            Debug.Log("enemyBoom");
-            col.gameObject.GetComponent<EnemyHealthSystem>().Damage(daggerDamage, 0.5f) ;
-            Destroyed=true;
+            if (iceDagger)
+            {
+                col.GetComponent<EnemyController>().frozenState(col);
+                gameObject.GetComponent<Collider2D>().enabled =false;
+                gameObject.GetComponent<SpriteRenderer>().enabled = false;
+            }
+            else
+            {
+                col.gameObject.GetComponent<EnemyHealthSystem>().Damage(daggerDamage);
+                Destroyed = true;
+            }
         }
     }
+
+
 }

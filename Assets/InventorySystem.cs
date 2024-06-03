@@ -25,7 +25,9 @@ public class InventorySystem : MonoBehaviour
     public GameObject bomb;
     public GameObject slowBomb;
     public GameObject dagger;
-    public Item equipedItem;
+    public GameObject iceDagger;
+    public Item consumableEquipedItem;
+    public Item throwableEquipedItem;
     public Item selectedItem;
     public Item shopSelectedItem;
 
@@ -81,23 +83,37 @@ public class InventorySystem : MonoBehaviour
     }
     private void Update()
     {
-        equipedItem = PlayerInventoryManager.GetEquipedItem();
+        consumableEquipedItem = PlayerInventoryManager.GetConsumableEquipedItem();
+        throwableEquipedItem = PlayerInventoryManager.GetThrowableEquipedItem();
         shopSelectedItem = ShopInventoryManager.GetSelectedItem();
         selectedItem = PlayerInventoryManager.GetSelectedItem();
-        if (equipedItem != playerInventory.nullitem && !equipedItem.inDelay)
+        if (consumableEquipedItem != playerInventory.nullitem && !consumableEquipedItem.inDelay)
         {
-            if (consumableInteracted) { RemovePlayerItem(Consume(equipedItem)); }
-            if (throwableInteracted) { RemovePlayerItem(Throw(equipedItem)); }
+            if (consumableInteracted) { RemovePlayerItem(Consume(consumableEquipedItem),0); }
+        }
+        if (throwableEquipedItem != playerInventory.nullitem && !throwableEquipedItem.inDelay)
+        {
+            if (throwableInteracted) { RemovePlayerItem(Throw(throwableEquipedItem),1); }
         }
         consumableInteracted = false;
         throwableInteracted = false;
     }
-    public void RemovePlayerItem(bool result)
+    public void RemovePlayerItem(bool result,int type)
     {
+        //0 consumable 1 throwable
         if (result)
         {
-            playerInventory.RemoveItem(equipedItem);
-            if (equipedItem.stack == 0) { PlayerInventoryManager.WhenRemoved(); }
+            if (type==0)
+            {
+                playerInventory.RemoveItem(consumableEquipedItem);
+                if (consumableEquipedItem.stack == 0) { PlayerInventoryManager.WhenRemoved(0); }
+            }
+            else
+            {
+                playerInventory.RemoveItem(throwableEquipedItem);
+                if (throwableEquipedItem.stack == 0) { PlayerInventoryManager.WhenRemoved(1); }
+            }
+           
         }
     }
     public bool Consume(Item _equipedItem)
@@ -108,7 +124,7 @@ public class InventorySystem : MonoBehaviour
             case 1:
                 return Apple(_equipedItem);
             case 2:
-                //return Broccoli(_equipedItem);
+                return Broccoli(_equipedItem);
             case 3:
                 return SpringWater(_equipedItem);
             case 4:
@@ -148,6 +164,8 @@ public class InventorySystem : MonoBehaviour
                 return SlowBomb(_equipedItem);
             case 8:
                 return Dagger(_equipedItem);
+            case 9:
+                return IceDagger(_equipedItem);
 
             default: break;
         }
@@ -167,7 +185,7 @@ public class InventorySystem : MonoBehaviour
     }
     public bool Broccoli(Item _equipedItem)
     {
-        //HealthSystem.broccoli=true;
+        PlayerMain.Instance.PlayerData.healthSystem.DamageMultiplier = _equipedItem.value;
         StartCoroutine(EffectCoroutine(_equipedItem));
         StartCoroutine(DelayCoroutine(_equipedItem));
         return true;
@@ -175,7 +193,7 @@ public class InventorySystem : MonoBehaviour
     }
     public bool SpringWater(Item _equipedItem)
     {
-        if (ManaSoulSystem.currentMana < ManaSoulSystem.maxMana)
+        if (ManaSoulSystem.CurrentMana < ManaSoulSystem.MaxMana)
         {
             ManaSoulSystem.AddMana(33);
             return true;
@@ -213,14 +231,21 @@ public class InventorySystem : MonoBehaviour
         Instantiate(dagger, new Vector3(gameObject.transform.position.x, gameObject.transform.position.y, gameObject.transform.position.z), Quaternion.identity);
         return true;
     }
+    public bool IceDagger(Item _selectedItem)
+    {
+        Instantiate(iceDagger, new Vector3(gameObject.transform.position.x, gameObject.transform.position.y, gameObject.transform.position.z), Quaternion.identity);
+        return true;
+    }
 
     public void HpBoost(Item _selectedItem)
     {
-        //PlayerMain.Instance.playerHealthSystem.MaxHealth+=_selectedItem.value;
+        float newMaxHealth = PlayerMain.Instance.PlayerData.healthSystem.MaxHealth + _selectedItem.value;
+        PlayerMain.Instance.PlayerData.healthSystem.MaxHealth = newMaxHealth;
     }
     public void ManaBoost(Item _selectedItem)
     {
-        ManaSoulSystem.maxMana+=_selectedItem.value;
+        float newMaxMana = ManaSoulSystem.MaxMana + _selectedItem.value;
+        ManaSoulSystem.MaxMana = newMaxMana;
     }
     public void AbilityPowerBoost(Item _selectedItem)
     {
@@ -238,6 +263,7 @@ public class InventorySystem : MonoBehaviour
                 {
                     PermanentConsume(shopSelectedItem);
                 }
+                playerInventory.ArrangeItems();
             }
         }
     }

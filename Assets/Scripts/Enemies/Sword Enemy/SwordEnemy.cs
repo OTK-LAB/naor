@@ -71,9 +71,11 @@ public class SwordEnemy : MonoBehaviour
     [SerializeField] public float damageamount;
     bool attackable = true;
 
+    public GameObject ice;
     bool IsDead = false;
     bool isHit = false;
-    float verticalTolerance = 3f; //enemy alttayken player ï¿½stteyse onu algï¿½lamasï¿½n diye eklendi
+    bool isFrozen = false;
+    float verticalTolerance = 0.5f; //enemy alttayken player üstteyse onu algýlamasýn diye eklendi
     float timer;
     //Hit
     Vector2 temp;
@@ -100,7 +102,8 @@ public class SwordEnemy : MonoBehaviour
         animator = GetComponent<Animator>();
         _healthSystem.OnHit += OnHit;
         _healthSystem.OnDead += OnDead;
-        // raycastOrigin = new Vector2(transform.position.x, transform.position.y - raycastOffset);
+        _healthSystem.OnFreeze += OnFreeze;
+
     }
     void Start()
     {
@@ -167,7 +170,7 @@ public class SwordEnemy : MonoBehaviour
             case State.STATE_FROZEN:
                 ChangeAnimationState(idle);
                 rb.velocity = Vector2.zero;
-                coolDown(5);
+                FreezeCoolDown(5);
                 break;
             case State.STATE_BACKTOWALL:
                 if (check)
@@ -206,6 +209,7 @@ public class SwordEnemy : MonoBehaviour
             rb.DOMove(rb.position + -knockbackVector * knockbackDistance, 0.07f).SetEase(Ease.OutQuad); //0.07olabilir
 
             ChangeAnimationState(hit);
+            isFrozen= false;
             isHit = false;
             attackable = true;
         }
@@ -317,7 +321,13 @@ public class SwordEnemy : MonoBehaviour
     }
     public void setFrozenState()
     {
+        isFrozen = true;
         state = State.STATE_FROZEN;
+    }
+    public void breakFreeze()
+    {
+        isFrozen = false;
+        checkPlayer();
     }
     IEnumerator backtoCoolDown()
     {
@@ -347,6 +357,17 @@ public class SwordEnemy : MonoBehaviour
         }
         return false;
     }
+    public void FreezeCoolDown(float i)
+    {
+        timer += Time.deltaTime;
+        if (timer >= i)
+        {
+            attackable = true;
+            timer = 0;
+            isFrozen = false;
+            checkPlayer();
+        }
+    }
 
     void ChangeAnimationState(string newState)
     {
@@ -373,6 +394,14 @@ public class SwordEnemy : MonoBehaviour
             knockbackDistance = knockdistance;
             state = State.STATE_HIT;
             isHit = true;
+        }
+    }
+    void OnFreeze(object sender, EventArgs e)
+    {
+        if (isFrozen)
+        {
+            gameObject.GetComponent<EnemyHealthSystem>().onFreeze = true;
+            Instantiate(ice, new Vector3(gameObject.transform.position.x - 3, gameObject.transform.position.y, gameObject.transform.position.z), Quaternion.identity);
         }
     }
     void OnDead(object sender, EventArgs e)
