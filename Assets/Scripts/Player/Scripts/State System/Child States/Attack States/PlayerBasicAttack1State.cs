@@ -12,11 +12,13 @@ public class PlayerBasicAttack1State : AttackState
         attackDuration = playerData.Attack.BasicAttack1.AttackDuration;
         maxStateTime = playerData.Attack.BasicAttack1.MaxStateTime;
         inputManager.Input_Attack = false;
+        playerData.Attack.AttackColliders.Find(x => x.Type == PlayerData.AttackStateVariables.AttackType.Basic1).Collider.enabled = true;
     }
 
     public override void Exit()
     {
         base.Exit();
+        playerData.Attack.AttackColliders.Find(x => x.Type == PlayerData.AttackStateVariables.AttackType.Basic1).Collider.enabled = false;
     }
 
     public override void FixedUpdate()
@@ -26,7 +28,6 @@ public class PlayerBasicAttack1State : AttackState
 
     public override void PhysicsCheck()
     {
-        base.PhysicsCheck();
     }
 
     public override void SwitchStateLogic()

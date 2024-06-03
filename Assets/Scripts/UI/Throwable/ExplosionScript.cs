@@ -32,7 +32,7 @@ public class ExplosionScript : MonoBehaviour
     {
         if(col.gameObject.layer == LayerMask.NameToLayer("Enemy") && !damaged)
         {
-            col.gameObject.GetComponent<EnemyHealthSystem>().Damage(explosionDamage);
+            col.gameObject.GetComponent<EnemyHealthSystem>().Damage(explosionDamage, 0.8f) ;
             damaged = true; 
         }
         else if(col.gameObject.layer == LayerMask.NameToLayer("Player") && !damaged2)

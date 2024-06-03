@@ -10,7 +10,7 @@ public class EnemyHealthSystem : MonoBehaviour
     public float currentHealth;
     [SerializeField]
     public float maxHealth;
-    public event EventHandler OnHit;
+    public event EventHandler<float> OnHit;
     public event EventHandler OnShield;
     public event EventHandler OnDead;
     public event EventHandler OnFreeze;
@@ -33,7 +33,7 @@ public class EnemyHealthSystem : MonoBehaviour
         return currentHealth;
     }
 
-    public void Damage(float damageAmount)
+    public void Damage(float damageAmount, float knockbackDistance)
     {
 
         if (!invincible)
@@ -56,7 +56,7 @@ public class EnemyHealthSystem : MonoBehaviour
             currentHealth -= damageAmount;
             
             if (!onShield)
-                OnHit?.Invoke(this, EventArgs.Empty);
+                OnHit?.Invoke(this, knockbackDistance);
   
             if (currentHealth <= 0)
             {

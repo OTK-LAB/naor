@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using UnityEngine.Rendering;
+using UltimateCC;
+using DG.Tweening;
 
 public class SwordEnemy : MonoBehaviour
 {
@@ -15,7 +18,8 @@ public class SwordEnemy : MonoBehaviour
         STATE_NOTDAMAGE,
         STATE_HIT,
         STATE_FROZEN,
-        STATE_BACKTOWALL
+        STATE_BACKTOWALL,
+        STATE_WAIT
     };
 
     State state = State.STATE_STARTINGMOVE;
@@ -30,6 +34,7 @@ public class SwordEnemy : MonoBehaviour
     const string follow = "Run";
     const string startingmove = "StartingMove1";
 
+    public LayerMask playerLayer;
     public Material material;
 
     //Movement
@@ -39,7 +44,7 @@ public class SwordEnemy : MonoBehaviour
     public GameObject wall;
     [Header("Right Wall")]
     public GameObject wall2;
-    Vector3 startPoint;
+    Vector2 startPoint;
     bool isBetweenWalls;
     float moveDirectionX;
     float step;
@@ -51,13 +56,14 @@ public class SwordEnemy : MonoBehaviour
     float distanceToPlayer;
     public float moveSpeed;
     float firstmoveSpeed;
-    
+
     //Slow
     public float slowRate;
     float slowSpeed;
     bool slow = false;
     float slowTime;
-
+    public float hitCoolDown;
+    public float attackCoolDown;
     //Attack
     Vector2 enemyPosition;
     [SerializeField] public GameObject attackPoint;
@@ -73,14 +79,23 @@ public class SwordEnemy : MonoBehaviour
     float timer;
     //Hit
     Vector2 temp;
-    public float knockbackDistance; //geri sekmesi
+    float knockbackDistance; //geri sekmesi
     Rigidbody2D rb;
     LayerMask enemyLayers;
     EnemyHealthSystem _healthSystem;
 
+    float raycastDistance = 0.5f; //   birim uzaklÄ±kta bir raycast
+    public LayerMask obstacleLayer; // Engel olarak tanÄ±mlanan bir LayerMask
+    float raycastOffset = 0.5f;
+    Vector2 raycastOrigin;
+    bool obstacle = false;
+    RaycastHit2D hitObject;
+
     public GameObject soul;
     private bool hasTurned = false;
-
+    bool check;
+    bool cooldownCheck = false;
+    bool hitcooldownCheck = false;
     void Awake()
     {
         _healthSystem = GetComponent<EnemyHealthSystem>();
@@ -95,17 +110,38 @@ public class SwordEnemy : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         playerPos = GameObject.FindGameObjectWithTag("Player").transform;
         player = GameObject.FindGameObjectWithTag("Player");
-        startPoint = transform.position;
+        startPoint = rb.position;
         firstmoveSpeed = moveSpeed;
-        slowSpeed = (firstmoveSpeed/100)*(100-slowRate);
-
+        slowSpeed = (firstmoveSpeed / 100) * (100 - slowRate);
     }
 
     void Update()
     {
         checkState();
         slowTimer();
+        objectDetected();
+
     }
+
+    void objectDetected()
+    {
+        raycastOrigin = new Vector2(rb.position.x, rb.position.y - raycastOffset);
+        hitObject = Physics2D.Raycast(raycastOrigin, transform.right, raycastDistance, obstacleLayer);
+
+        if (hitObject.collider != null)
+        {
+            enemyPosition = new Vector2(rb.position.x, rb.position.y);
+            if (Vector2.Distance(enemyPosition, playerPos.position) > 1)
+            {
+                obstacle = true;
+                check = false;
+                state = State.STATE_BACKTOWALL;
+            }
+            else
+                state = State.STATE_ATTACK;
+        }
+    }
+
     void checkState()
     {
         switch (state)
@@ -137,16 +173,28 @@ public class SwordEnemy : MonoBehaviour
                 FreezeCoolDown(5);
                 break;
             case State.STATE_BACKTOWALL:
-                ChangeAnimationState(startingmove);
-                backtoWall();
+                if (check)
+                    backtoWall();
+                else
+                    lookhim();
+                break;
+            case State.STATE_WAIT:
+                rb.velocity = Vector2.zero;
+                ChangeAnimationState(idle);
+                cooldownCheck = WaitForSeconds(attackCoolDown);
+                if (cooldownCheck)
+                {
+                    state = State.STATE_ATTACK;
+                    cooldownCheck = false;
+                }
                 break;
 
         }
     }
     void startingMove()
     {
-        if(!slow)
-            moveSpeed = firstmoveSpeed; // baþlangýç hareket hýzý
+        if (!slow)
+            moveSpeed = firstmoveSpeed; // baï¿½langï¿½ï¿½ hareket hï¿½zï¿½
         moveDirectionX = moveDirection;
         step = moveSpeed * moveDirectionX;
         rb.velocity = new Vector3(step, rb.velocity.y);
@@ -155,16 +203,10 @@ public class SwordEnemy : MonoBehaviour
     {
         if (isHit)
         {
-            /*
-            temp = new Vector2((rb.position.x + 2), rb.position.y);
-            if (Moveright)
-                rb.MovePosition((Vector2)rb.position + (temp * moveSpeed * Time.deltaTime));
-            else
-                rb.MovePosition((Vector2)rb.position - (temp * moveSpeed * Time.deltaTime));
-            */
-            knockbackDistance = -2f;
+            //knockbackDistance = -0.5f;
             Vector2 knockbackVector = Moveright ? Vector2.right : Vector2.left;
-            rb.MovePosition(rb.position + knockbackVector * knockbackDistance);
+            //rb.MovePosition(rb.position + knockbackVector * knockbackDistance);
+            rb.DOMove(rb.position + -knockbackVector * knockbackDistance, 0.07f).SetEase(Ease.OutQuad); //0.07olabilir
 
             ChangeAnimationState(hit);
             isFrozen= false;
@@ -172,41 +214,64 @@ public class SwordEnemy : MonoBehaviour
             attackable = true;
         }
     }
-
-
+    public void setState()
+    {
+          
+    }
+    IEnumerator afterHitState()
+    {
+        ChangeAnimationState(idle);
+        yield return new WaitForSeconds(hitCoolDown);
+        hitcooldownCheck = true;
+        state = State.STATE_STARTINGMOVE;
+    }
     void checkPlayer()
     {
-        enemyPosition = new Vector2(rb.position.x, rb.position.y); // Düþmanýn konumu
-     //   Vector2 playerPosition = new Vector2(playerPos.position.x, playerPos.position.y); // Oyuncunun konumu
+        enemyPosition = new Vector2(rb.position.x, rb.position.y); // Dï¿½ï¿½manï¿½n konumu                                                               
         distanceToPlayer = Vector2.Distance(enemyPosition, playerPos.position);
         isBetweenWalls = transform.position.x >= wall.transform.position.x && transform.position.x <= wall2.transform.position.x;
 
-        if (distanceToPlayer < distance && Mathf.Abs(enemyPosition.y - playerPos.position.y) < verticalTolerance)
+        if (distanceToPlayer < distance && Mathf.Abs(enemyPosition.y - playerPos.position.y) < verticalTolerance && !obstacle)
         {
             hasTurned = false;
-            if (distanceToPlayer <= 1)
-                state = State.STATE_ATTACK;
+            if (distanceToPlayer <= 1.8f) //+cooldown 0.5f
+                 state = State.STATE_WAIT;            
             else
                 state = State.STATE_FOLLOWING;
         }
         else if (isBetweenWalls)
+        {
+            check = false;
+            obstacle = false;
             state = State.STATE_STARTINGMOVE;
-           else
+        }
+        else
             state = State.STATE_BACKTOWALL;
     }
+
     void following()
     {
         flip();
-        if(!slow)
+        if (!slow)
             moveSpeed = firstmoveSpeed + 2;
         Vector2 currentPlayerPos = new Vector2(playerPos.position.x, rb.position.y);
         rb.velocity = (currentPlayerPos - rb.position).normalized * moveSpeed;
     }
-    
+
+    void lookhim()
+    {
+        ChangeAnimationState(idle);
+        rb.velocity = Vector2.zero;
+        check = WaitForSeconds(1f);
+        if (check)
+            backtoWall();
+    }
     void backtoWall()
     {
+        ChangeAnimationState(startingmove);
         moveSpeed = firstmoveSpeed;
-        Vector2 startDirection = startPoint - transform.position;
+        Vector2 startDirection = startPoint - rb.position;
+        startDirection.y= rb.position.y;
         if (!hasTurned && Vector3.Dot(startDirection, transform.right) < 0f)
         {
             hasTurned = true;
@@ -215,10 +280,10 @@ public class SwordEnemy : MonoBehaviour
             moveDirection *= -1;
             transform.Rotate(0f, 180f, 0f);
         }
-        rb.velocity = startDirection.normalized * moveSpeed ;
+        rb.velocity = startDirection.normalized * moveSpeed;
         checkPlayer();
-        // Baþlangýç konumuna ulaþtýðýnda, Walking state'ine geç
-        if (Vector2.Distance(transform.position, startPoint) < 0.1f)
+        // Baï¿½langï¿½ï¿½ konumuna ulaï¿½tï¿½ï¿½ï¿½nda, Walking state'ine geï¿½
+        if (Vector2.Distance(rb.position, startPoint) < 0.1f)
         {
             hasTurned = false;
             state = State.STATE_STARTINGMOVE;
@@ -230,14 +295,9 @@ public class SwordEnemy : MonoBehaviour
         {
             ChangeAnimationState(attack);
             attackable = false;
-            Collider2D[] hitPlayer = Physics2D.OverlapCircleAll(attackPoint.transform.position, attackRange);
-            foreach (Collider2D enemy in hitPlayer)
-            {
-               // if (enemy.tag == "Player")
-                    //player.GetComponent<HealthSystem>().Damage(damageamount);
-            }
+            Collider2D hitPlayer = Physics2D.OverlapCircle(attackPoint.transform.position, attackRange, playerLayer);
+            PlayerMain.Instance.PlayerData.healthSystem.Damage(damageamount);
         }
-
     }
     public void slowTimer()
     {
@@ -274,20 +334,28 @@ public class SwordEnemy : MonoBehaviour
         if (!isHit)
         {
             yield return new WaitForSeconds(0.01f);
-                state = State.STATE_COOLDOWN;
+            state = State.STATE_COOLDOWN;
         }
         else
             state = State.STATE_HIT;
     }
-    void coolDown(int i)
+
+    void coolDown(float i)
     {
+        if (WaitForSeconds(i))
+            checkPlayer();
+    }
+    private bool WaitForSeconds(float i)
+    {
+        Debug.Log(timer);
         timer += Time.deltaTime;
         if (timer >= i)
         {
             attackable = true;
             timer = 0;
-            checkPlayer();
+            return true;
         }
+        return false;
     }
     public void FreezeCoolDown(float i)
     {
@@ -319,10 +387,11 @@ public class SwordEnemy : MonoBehaviour
 
     }
 
-    void OnHit(object sender, EventArgs e)
+    void OnHit(object sender, float knockdistance)
     {
         if (!IsDead)
         {
+            knockbackDistance = knockdistance;
             state = State.STATE_HIT;
             isHit = true;
         }
@@ -339,8 +408,10 @@ public class SwordEnemy : MonoBehaviour
     {
         if (!IsDead)
         {
-            StartCoroutine(SpawnSoul(0.8f));
+            //     StartCoroutine(SpawnSoul(0.8f)); ?????????????????
             IsDead = true;
+            rb.gravityScale = 0f;
+            rb.velocity = Vector2.zero;
             ChangeAnimationState(death);
             GetComponent<Collider2D>().enabled = false;
             this.enabled = false;
