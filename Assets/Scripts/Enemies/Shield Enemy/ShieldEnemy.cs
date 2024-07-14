@@ -2,12 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using UnityEditor.Search;
 
 public class ShieldEnemy : MonoBehaviour
 {
-
-
     enum State
     {
         STATE_STARTINGMOVE,
@@ -19,9 +16,7 @@ public class ShieldEnemy : MonoBehaviour
         STATE_FROZEN,
         STATE_BACKTOWALL
     };
-
-
-
+    
     //Animations
     private Animator animator;
     private string currentState;
@@ -36,7 +31,6 @@ public class ShieldEnemy : MonoBehaviour
     private GameObject player;
     private Transform playerPos;
     float distanceToPlayer;
-    private Vector2 currentPlayerPos;
     [SerializeField] public float distance;
     [SerializeField] public float moveSpeed;
 
@@ -66,10 +60,8 @@ public class ShieldEnemy : MonoBehaviour
     [SerializeField] public float attackRange;
     [SerializeField] public float damageamount;
     float timer;
-    public GameObject ice;
     bool IsDead = false;
     bool isHit = false;
-    bool isFrozen = false;
     bool attackable = true;
     // bool isShield = false;
     float verticalTolerance = 2f;
@@ -90,9 +82,8 @@ public class ShieldEnemy : MonoBehaviour
         _healthSystem = GetComponent<EnemyHealthSystem>();
         animator = GetComponent<Animator>();
         _healthSystem.OnHit += OnHit;
-        _healthSystem.OnDead += OnDead;
-        _healthSystem.OnShield += OnShield;
-        _healthSystem.OnFreeze+= OnFreeze;
+       _healthSystem.OnDead += OnDead;
+       _healthSystem.OnShield += OnShield;
 
     }
 
@@ -132,18 +123,19 @@ public class ShieldEnemy : MonoBehaviour
                 break;
             case State.STATE_COOLDOWN:
                 ChangeAnimationState(cooldown);
-                coolDown(2);
+                coolDown(0.5f);
                 break;
             case State.STATE_HIT:
                 hitState();
                 break;
             case State.STATE_SHIELD:
                 ChangeAnimationState(shield);
+                StartCoroutine(ChangeToNewState(2.0f, cooldown, State.STATE_COOLDOWN));
                 break;
             case State.STATE_FROZEN:
                 ChangeAnimationState(cooldown);
                 rb.velocity = Vector2.zero;
-                FreezeCoolDown(5);
+                coolDown(5);
                 break;
             case State.STATE_BACKTOWALL:
                 ChangeAnimationState(startingmove);
@@ -155,7 +147,7 @@ public class ShieldEnemy : MonoBehaviour
     void startingMove()
     {
         if (!slow)
-            moveSpeed = firstmoveSpeed; // baþlangýç hareket hýzý
+            moveSpeed = firstmoveSpeed; // baï¿½langï¿½ï¿½ hareket hï¿½zï¿½
         moveDirectionX = moveDirection;
         step = moveSpeed * moveDirectionX;
         rb.velocity = new Vector3(step, rb.velocity.y);
@@ -163,7 +155,7 @@ public class ShieldEnemy : MonoBehaviour
 
     void checkPlayer()
     {
-        enemyPosition = new Vector2(rb.position.x, rb.position.y); // Düþmanýn konumu
+        enemyPosition = new Vector2(rb.position.x, rb.position.y); // Dï¿½ï¿½manï¿½n konumu
      //   Vector2 playerPosition = new Vector2(playerPos.position.x, playerPos.position.y); // Oyuncunun konumu
         distanceToPlayer = Vector2.Distance(enemyPosition, playerPos.position);
         isBetweenWalls = transform.position.x >= wall.transform.position.x && transform.position.x <= wall2.transform.position.x;
@@ -179,10 +171,6 @@ public class ShieldEnemy : MonoBehaviour
             state = State.STATE_STARTINGMOVE;
         else
             state = State.STATE_BACKTOWALL;
-    }
-    public void setState()
-    {
-        state = State.STATE_STARTINGMOVE;
     }
 
     void following()
@@ -207,7 +195,7 @@ public class ShieldEnemy : MonoBehaviour
         }
         rb.velocity = startDirection.normalized * moveSpeed;
         checkPlayer();
-        // Baþlangýç konumuna ulaþtýðýnda, Walking state'ine geç
+        // Baï¿½langï¿½ï¿½ konumuna ulaï¿½tï¿½ï¿½ï¿½nda, Walking state'ine geï¿½
         if (Vector2.Distance(transform.position, startPoint) < 0.1f)
         {
             hasTurned = false;
@@ -238,13 +226,7 @@ public class ShieldEnemy : MonoBehaviour
     }
     public void setFrozenState()
     {
-        isFrozen = true;
         state = State.STATE_FROZEN;
-    }
-    public void breakFreeze()
-    {
-        isFrozen = false;
-        checkPlayer();
     }
     void hitState()
     {
@@ -263,7 +245,6 @@ public class ShieldEnemy : MonoBehaviour
 
             ChangeAnimationState(hit);
             isHit = false;
-            isFrozen= false;
             attackable = true;
         }
     }
@@ -301,17 +282,6 @@ public class ShieldEnemy : MonoBehaviour
         {
             attackable = true;
             timer = 0;
-            checkPlayer();
-        }
-    }
-    public void FreezeCoolDown(float i)
-    {
-        timer += Time.deltaTime;
-        if (timer >= i)
-        {
-            attackable = true;
-            timer = 0;
-            isFrozen = false;
             checkPlayer();
         }
     }
@@ -365,47 +335,34 @@ public class ShieldEnemy : MonoBehaviour
 
     void OnHit(object sender, float knockdistance)
     {
-
-        if (!IsDead)
-        {
-            state = State.STATE_HIT;
-            isHit = true;
-        }
+        if (IsDead) return;
+        
+        state = State.STATE_HIT;
+        isHit = true;
     }
     void OnShield(object sender, EventArgs e )
     {
-        if (!IsDead)
+        if (IsDead) return;
+        
+        checkBehind();
+        if (isBehind)
         {
-            checkBehind();
-            if (isBehind)
-            {
-                state = State.STATE_SHIELD;
-              //  isShield = true;
-                gameObject.GetComponent<EnemyHealthSystem>().onShield = true;
-            }
-
-        }
-
-    }
-    void OnFreeze(object sender, EventArgs e)
-    {
-        if (isFrozen)
-        {
-            gameObject.GetComponent<EnemyHealthSystem>().onFreeze = true;
-            Instantiate(ice, new Vector3(gameObject.transform.position.x - 3, gameObject.transform.position.y, gameObject.transform.position.z), Quaternion.identity);
+            state = State.STATE_SHIELD;
+          //  isShield = true;
+            gameObject.GetComponent<EnemyHealthSystem>().onShield = true;
         }
     }
     void OnDead(object sender, EventArgs e)
     {
-        if (!IsDead)
-        {
-            IsDead = true;
-            ChangeAnimationState(death);
-            GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
-            GetComponent<Collider2D>().enabled = false;
-            this.enabled = false;
-            GetComponent<SpriteRenderer>().sortingLayerName = "Foreground";
-        }
+        if (IsDead) return;
+        
+        IsDead = true;
+        ChangeAnimationState(death);
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
+        GetComponent<Collider2D>().enabled = false;
+        rb.velocity = Vector2.zero;
+        this.enabled = false;
+        GetComponent<SpriteRenderer>().sortingLayerName = "Foreground";
     }
 
     private void OnDrawGizmosSelected()
@@ -418,5 +375,13 @@ public class ShieldEnemy : MonoBehaviour
         if (currentState == newState) return;
         animator.Play(newState);
         currentState = newState;
+    }
+
+    IEnumerator ChangeToNewState(float waitTime, string animationStateName, State state_)
+    {
+        yield return new WaitForSeconds(waitTime);
+        
+        ChangeAnimationState(animationStateName);
+        this.state = state_;
     }
 }

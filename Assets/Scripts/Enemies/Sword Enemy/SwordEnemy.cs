@@ -162,7 +162,7 @@ public class SwordEnemy : MonoBehaviour
                 break;
             case State.STATE_COOLDOWN:
                 ChangeAnimationState(idle);
-                coolDown(2);
+                coolDown(0.5f);
                 break;
             case State.STATE_HIT:
                 hitState();
@@ -234,7 +234,7 @@ public class SwordEnemy : MonoBehaviour
         if (distanceToPlayer < distance && Mathf.Abs(enemyPosition.y - playerPos.position.y) < verticalTolerance && !obstacle)
         {
             hasTurned = false;
-            if (distanceToPlayer <= 1.8f) //+cooldown 0.5f
+            if (distanceToPlayer <= 3f) //+cooldown 0.5f
                  state = State.STATE_WAIT;            
             else
                 state = State.STATE_FOLLOWING;
@@ -262,11 +262,11 @@ public class SwordEnemy : MonoBehaviour
     {
         ChangeAnimationState(idle);
         rb.velocity = Vector2.zero;
-        check = WaitForSeconds(1f);
+        check = WaitForSeconds(0.6f);
         if (check)
             backtoWall();
     }
-    void backtoWall()
+    void backtoWall()   //idle
     {
         ChangeAnimationState(startingmove);
         moveSpeed = firstmoveSpeed;
@@ -347,7 +347,6 @@ public class SwordEnemy : MonoBehaviour
     }
     private bool WaitForSeconds(float i)
     {
-        Debug.Log(timer);
         timer += Time.deltaTime;
         if (timer >= i)
         {
