@@ -11,7 +11,7 @@ public class Archer_Attack : ArcherState
     public override void EnterState()
     {
         archerRigidBody.velocity = Vector2.zero;
-        archerComponent.ChangeAnimationState("attack");
+        archerComponent.ChangeAnimationState(ArcherAnimNames.attack);
     }
 
     public override void ExitState()

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using UnityEngine.Serialization;
 
 public class Archer : StateManager<Archer.State>
 {
@@ -15,13 +16,15 @@ public class Archer : StateManager<Archer.State>
     };
     
     private Animator animator;
+    private string currentAnimationState;
+    
     private GameObject player;
     public GameObject Arrow;
     public float LaunchForce;
     public GameObject attackPoint;
     EnemyHealthSystem _healthSystem;
     public GameObject soul;
-    public float moveSpeed;
+    [FormerlySerializedAs("moveSpeed")] public float movementSpeed;
 
     void Awake()
     {
@@ -67,7 +70,9 @@ public class Archer : StateManager<Archer.State>
     
     public void ChangeAnimationState(string newState)
     {
+        if (currentAnimationState == newState) return;
         animator.Play(newState);
+        currentAnimationState = newState;
     }
     
     void OnHit(object sender, float knockdistance)

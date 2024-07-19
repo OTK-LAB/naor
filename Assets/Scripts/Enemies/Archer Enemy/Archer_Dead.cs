@@ -4,16 +4,22 @@ using UnityEngine;
 
 public class Archer_Dead : ArcherState
 {
+    private Collider2D _collider2D;
+    private SpriteRenderer _spriteRenderer;
+    
     public Archer_Dead(GameObject _archerGameObject, GameObject _playerGameObject) : base(Archer.State.STATE_DEAD, _archerGameObject, _playerGameObject)
-    {}
+    {
+        _collider2D = _archerGameObject.GetComponent<Collider2D>();
+        _spriteRenderer = archerGameObject.GetComponent<SpriteRenderer>();
+    }
 
     public override void EnterState()
     {
-        archerComponent.ChangeAnimationState("death");
+        archerComponent.ChangeAnimationState(ArcherAnimNames.death);
         
-        archerGameObject.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
-        archerGameObject.GetComponent<Collider2D>().enabled = false;
-        archerGameObject.GetComponent<SpriteRenderer>().sortingLayerName = "Foreground";
+        archerRigidBody.bodyType = RigidbodyType2D.Kinematic;
+        _collider2D.enabled = false;
+        _spriteRenderer.sortingLayerName = "Foreground";
     }
 
     public override void ExitState()

@@ -20,7 +20,7 @@ public class Archer_Hit : ArcherState
         Vector2 knockbackVector = moveRight ? Vector2.right : Vector2.left;
         archerRigidBody.MovePosition(archerRigidBody.position + knockbackVector * knockbackDistance);
         
-        archerComponent.ChangeAnimationState("hit");
+        archerComponent.ChangeAnimationState(ArcherAnimNames.hit);
         hitTimer = 0.0f;
         nextState = Archer.State.STATE_HIT;
     }

@@ -5,17 +5,16 @@ using System;
 using UnityEngine.Rendering;
 using UltimateCC;
 using DG.Tweening;
+using UnityEngine.Serialization;
 
-public class SwordEnemy : MonoBehaviour
+public class SwordEnemy : StateManager<SwordEnemy.State>
 {
-
-    enum State
+    public enum State
     {
         STATE_STARTINGMOVE,
         STATE_FOLLOWING,
         STATE_ATTACK,
         STATE_COOLDOWN,
-        STATE_NOTDAMAGE,
         STATE_HIT,
         STATE_FROZEN,
         STATE_BACKTOWALL,
@@ -54,7 +53,7 @@ public class SwordEnemy : MonoBehaviour
     private Transform playerPos;
     public float distance;
     float distanceToPlayer;
-    public float moveSpeed;
+    [FormerlySerializedAs("moveSpeed")] public float movementSpeed;
     float firstmoveSpeed;
 
     //Slow
@@ -108,7 +107,7 @@ public class SwordEnemy : MonoBehaviour
         playerPos = GameObject.FindGameObjectWithTag("Player").transform;
         player = GameObject.FindGameObjectWithTag("Player");
         startPoint = rb.position;
-        firstmoveSpeed = moveSpeed;
+        firstmoveSpeed = movementSpeed;
         slowSpeed = (firstmoveSpeed / 100) * (100 - slowRate);
     }
 
@@ -117,7 +116,6 @@ public class SwordEnemy : MonoBehaviour
         checkState();
         slowTimer();
         objectDetected();
-
     }
 
     void objectDetected()
@@ -191,9 +189,9 @@ public class SwordEnemy : MonoBehaviour
     void startingMove()
     {
         if (!slow)
-            moveSpeed = firstmoveSpeed; // ba�lang�� hareket h�z�
+            movementSpeed = firstmoveSpeed; // ba�lang�� hareket h�z�
         moveDirectionX = moveDirection;
-        step = moveSpeed * moveDirectionX;
+        step = movementSpeed * moveDirectionX;
         rb.velocity = new Vector3(step, rb.velocity.y);
     }
     void hitState()
@@ -210,10 +208,7 @@ public class SwordEnemy : MonoBehaviour
             attackable = true;
         }
     }
-    public void setState()
-    {
-          
-    }
+    
     IEnumerator afterHitState()
     {
         ChangeAnimationState(idle);
@@ -221,37 +216,37 @@ public class SwordEnemy : MonoBehaviour
         hitcooldownCheck = true;
         state = State.STATE_STARTINGMOVE;
     }
-    void checkPlayer()
-    {
-        enemyPosition = new Vector2(rb.position.x, rb.position.y); // D��man�n konumu                                                               
-        distanceToPlayer = Vector2.Distance(enemyPosition, playerPos.position);
-        isBetweenWalls = transform.position.x >= wall.transform.position.x && transform.position.x <= wall2.transform.position.x;
-
-        if (distanceToPlayer < distance && Mathf.Abs(enemyPosition.y - playerPos.position.y) < verticalTolerance && !obstacle)
-        {
-            hasTurned = false;
-            if (distanceToPlayer <= 3f) //+cooldown 0.5f
-                 state = State.STATE_WAIT;            
-            else
-                state = State.STATE_FOLLOWING;
-        }
-        else if (isBetweenWalls)
-        {
-            check = false;
-            obstacle = false;
-            state = State.STATE_STARTINGMOVE;
-        }
-        else
-            state = State.STATE_BACKTOWALL;
-    }
+    // void checkPlayer()
+    // {
+    //     enemyPosition = new Vector2(rb.position.x, rb.position.y); // D��man�n konumu                                                               
+    //     distanceToPlayer = Vector2.Distance(enemyPosition, playerPos.position);
+    //     isBetweenWalls = transform.position.x >= wall.transform.position.x && transform.position.x <= wall2.transform.position.x;
+    //
+    //     if (distanceToPlayer < distance && Mathf.Abs(enemyPosition.y - playerPos.position.y) < verticalTolerance && !obstacle)
+    //     {
+    //         hasTurned = false;
+    //         if (distanceToPlayer <= 3f) //+cooldown 0.5f
+    //              state = State.STATE_WAIT;            
+    //         else
+    //             state = State.STATE_FOLLOWING;
+    //     }
+    //     else if (isBetweenWalls)
+    //     {
+    //         check = false;
+    //         obstacle = false;
+    //         state = State.STATE_STARTINGMOVE;
+    //     }
+    //     else
+    //         state = State.STATE_BACKTOWALL;
+    // }
 
     void following()
     {
         flip();
         if (!slow)
-            moveSpeed = firstmoveSpeed + 2;
+            movementSpeed = firstmoveSpeed + 2;
         Vector2 currentPlayerPos = new Vector2(playerPos.position.x, rb.position.y);
-        rb.velocity = (currentPlayerPos - rb.position).normalized * moveSpeed;
+        rb.velocity = (currentPlayerPos - rb.position).normalized * movementSpeed;
     }
 
     void lookhim()
@@ -265,7 +260,7 @@ public class SwordEnemy : MonoBehaviour
     void backtoWall()   //idle
     {
         ChangeAnimationState(startingmove);
-        moveSpeed = firstmoveSpeed;
+        movementSpeed = firstmoveSpeed;
         Vector2 startDirection = startPoint - rb.position;
         startDirection.y= rb.position.y;
         if (!hasTurned && Vector3.Dot(startDirection, transform.right) < 0f)
@@ -276,7 +271,7 @@ public class SwordEnemy : MonoBehaviour
             moveDirection *= -1;
             transform.Rotate(0f, 180f, 0f);
         }
-        rb.velocity = startDirection.normalized * moveSpeed;
+        rb.velocity = startDirection.normalized * movementSpeed;
         checkPlayer();
         // Ba�lang�� konumuna ula�t���nda, Walking state'ine ge�
         if (Vector2.Distance(rb.position, startPoint) < 0.1f)
@@ -307,12 +302,12 @@ public class SwordEnemy : MonoBehaviour
     public void speedReduction(float time)
     {
         slowTime = time;
-        moveSpeed = slowSpeed;
+        movementSpeed = slowSpeed;
         slow = true;
     }
     public void speedFix()
     {
-        moveSpeed = firstmoveSpeed;
+        movementSpeed = firstmoveSpeed;
         slow = false;
     }
     public void setFrozenState()
@@ -347,7 +342,7 @@ public class SwordEnemy : MonoBehaviour
         return false;
     }
 
-    void ChangeAnimationState(string newState)
+    public void ChangeAnimationState(string newState)
     {
         if (currentState == newState) return;
         animator.Play(newState);
@@ -355,13 +350,13 @@ public class SwordEnemy : MonoBehaviour
     }
     private void OnTriggerEnter2D(Collider2D trig)
     {
-        if (trig.CompareTag("wall") && state == State.STATE_STARTINGMOVE)
-        {
-            if (Moveright) Moveright = false;
-            else Moveright = true;
-            moveDirection *= -1;
-            transform.Rotate(0f, 180f, 0f);
-        }
+        // if (trig.CompareTag("wall") && state == State.STATE_STARTINGMOVE)
+        // {
+        //     if (Moveright) Moveright = false;
+        //     else Moveright = true;
+        //     moveDirection *= -1;
+        //     transform.Rotate(0f, 180f, 0f);
+        // }
 
     }
 

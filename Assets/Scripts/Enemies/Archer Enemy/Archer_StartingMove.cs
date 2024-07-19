@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Archer_StartingMove: ArcherState
+public class Archer_StartingMove : ArcherState
 {
     private Archer.State nextState; // Next state variable
     
@@ -16,7 +16,8 @@ public class Archer_StartingMove: ArcherState
     public override void EnterState()
     {
         nextState = Archer.State.STATE_STARTINGMOVE;
-        archerComponent.ChangeAnimationState("run");
+        archerComponent.ChangeAnimationState(ArcherAnimNames.run);
+        CheckDirection();
     }
 
     public override void ExitState()
@@ -30,7 +31,7 @@ public class Archer_StartingMove: ArcherState
         checkPlayer();
         
         float moveDirectionX = moveDirection;
-        float step = archerComponent.moveSpeed * moveDirectionX;
+        float step = archerComponent.movementSpeed * moveDirectionX;
         archerRigidBody.velocity = new Vector3(step, archerRigidBody.velocity.y);
     }
 
@@ -43,21 +44,15 @@ public class Archer_StartingMove: ArcherState
     {
         if (other.CompareTag("wall"))
         {
-            moveRight = !moveRight;
-            moveDirection *= -1;
-            playerGameObject.transform.Rotate(0f, 180f, 0f);
+            flip();
         }
     }
 
     public override void OnTriggerStay2D(Collider2D other)
-    {
-        
-    }
+    {}
 
     public override void OnTriggerExit2D(Collider2D other)
-    {
-        
-    }
+    {}
     
     void checkPlayer()
     {
@@ -67,29 +62,30 @@ public class Archer_StartingMove: ArcherState
         if (distanceToPlayer < followDistance && Mathf.Abs(enemyPosition.y - playerPos.y) < verticalTolerance)
         {
             nextState = Archer.State.STATE_ATTACK;
-            flip();
+            CheckDirection();
         }
     }
-    
+
     void flip()
+    {
+        moveRight = !moveRight;
+        moveDirection *= -1;
+        archerGameObject.transform.Rotate(0f, 180f, 0f);
+    }
+    
+    void CheckDirection()
     {
         if (playerPos.x > (archerGameObject.transform.position.x + 0.5f))
         {
-            if (!moveRight)
-            {
-                archerGameObject.transform.Rotate(0f, 180f, 0f);
-                moveRight = true;
-                moveDirection *= -1;
-            }
+            archerGameObject.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            moveRight = true;
+            moveDirection = 1;
         }
         else
         {
-            if (moveRight)
-            {
-                archerGameObject.transform.Rotate(0f, 180f, 0f);
-                moveRight = false;
-                moveDirection *= -1;
-            }
+            archerGameObject.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            moveRight = false;
+            moveDirection = -1;
         }
     }
 }
